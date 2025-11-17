@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎁 Congratulations! You've Won!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 40px;
+            text-align: center;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .prize-box {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(253,203,110,0.3);
+        }
+        
+        .prize-box .amount {
+            font-size: 3em;
+            font-weight: bold;
+            color: #2d3436;
+            margin: 10px 0;
+        }
+        
+        .prize-box .currency {
+            font-size: 1.2em;
+            color: #636e72;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .warning-box h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .warning-box ul {
+            color: #856404;
+            margin-left: 20px;
+            font-size: 0.9em;
+        }
+        
+        .message {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #2d3436;
+            margin-bottom: 30px;
+        }
+        
+        .cta-button {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 1.3em;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(56,239,125,0.3);
+            border: none;
+            cursor: pointer;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(56,239,125,0.4);
+        }
+        
+        .timer {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.2em;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        .attack-info {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .attack-info h3 {
+            color: #721c24;
+            margin-bottom: 10px;
+        }
+        
+        .attack-info p {
+            color: #721c24;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        
+        .countdown {
+            font-size: 2em;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 CONGRATULATIONS! 🎉</h1>
+            <p style="font-size: 1.2em;">You've Been Selected!</p>
+        </div>
+        
+        <div class="content">
+            <div class="prize-box">
+                <div style="font-size: 4em;">🎁</div>
+                <div class="amount">$10,000</div>
+                <div class="currency">US DOLLARS</div>
+            </div>
+            
+            <div class="message">
+                <p><strong>Dear Lucky Winner,</strong></p>
+                <p style="margin-top: 15px;">
+                    You have been randomly selected from our database of premium users to receive a 
+                    <strong>SPECIAL CASH REWARD of $10,000 USD!</strong>
+                </p>
+                <p style="margin-top: 15px;">
+                    To claim your prize, simply verify your account by clicking the button below. 
+                    This is a limited-time offer and expires in:
+                </p>
+            </div>
+            
+            <div class="timer">
+                ⏰ Expires in: <span class="countdown" id="countdown">05:00</span>
+            </div>
+            
+            <a href="http://localhost:3001/login?client_id=client-vulnerable-app&redirect_uri=http://localhost:3002/callback&response_type=code&scope=profile%20email" 
+               class="cta-button" 
+               id="claimButton">
+                🎁 CLAIM YOUR $10,000 NOW! 🎁
+            </a>
+            
+            <div class="warning-box">
+                <h3>⚠️ EDUCATIONAL DEMO - PHISHING ATTACK SIMULATION</h3>
+                <ul>
+                    <li>This is a <strong>simulated phishing page</strong> for educational purposes</li>
+                    <li>The "prize" is fake - this demonstrates a social engineering attack</li>
+                    <li>The link leads to a vulnerable OAuth implementation</li>
+                    <li>In a real attack, clicking would compromise your account</li>
+                </ul>
+            </div>
+            
+            <div class="attack-info">
+                <h3>🔍 HOW THIS ATTACK WORKS:</h3>
+                <p>
+                    <strong>1. Social Engineering:</strong> The fake prize creates urgency and excitement<br>
+                    <strong>2. Legitimate-looking Authorization:</strong> The OAuth page appears real<br>
+                    <strong>3. No CSRF Protection:</strong> Missing state parameter allows the attack<br>
+                    <strong>4. Account Linking:</strong> Your account gets linked to attacker's session<br>
+                    <strong>5. Data Theft:</strong> Attacker gains access to your personal information
+                </p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 20px; background: #d1ecf1; border-radius: 10px;">
+                <h3 style="color: #0c5460; margin-bottom: 10px;">🛡️ HOW TO PROTECT YOURSELF:</h3>
+                <ul style="color: #0c5460; margin-left: 20px;">
+                    <li>Be skeptical of "too good to be true" offers</li>
+                    <li>Verify sender identity before clicking links</li>
+                    <li>Check URLs carefully (look for https://)</li>
+                    <li>Never share credentials via email links</li>
+                    <li>Use password managers and 2FA</li>
+                    <li>Report suspicious emails</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>⚠️ FOR EDUCATIONAL PURPOSES ONLY</p>
+            <p>This page demonstrates OAuth 2.0 CSRF vulnerability exploitation</p>
+            <p style="margin-top: 10px;">
+                <strong>Project:</strong> OAuth Security Demo | 
+                <strong>Team:</strong> Bin & Khánh
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Countdown timer
+        let timeLeft = 300; // 5 minutes
+        const countdownElement = document.getElementById('countdown');
+        
+        function updateCountdown() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            countdownElement.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft > 0) {
+                timeLeft--;
+            } else {
+                countdownElement.textContent = 'EXPIRED';
+                countdownElement.style.color = '#999';
+            }
+        }
+        
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        
+        // Track clicks for demo purposes
+        document.getElementById('claimButton').addEventListener('click', function(e) {
+            console.log('[PHISHING DEMO] User clicked malicious link!');
+            console.log('[PHISHING DEMO] In real attack, this would compromise account');
+            
+            // Show warning before redirect (in real attack, this wouldn't exist)
+            if (!confirm(
+                '⚠️ EDUCATIONAL DEMO\n\n' +
+                'You are about to click a malicious OAuth link.\n\n' +
+                'In a real scenario, this would:\n' +
+                '1. Redirect to legitimate OAuth page\n' +
+                '2. You would login (seems normal)\n' +
+                '3. Your account links to attacker session\n' +
+                '4. Attacker gains access to your data\n\n' +
+                'Click OK to continue demo, Cancel to stop.'
+            )) {
+                e.preventDefault();
+            }
+        });
+        
+        // Add some animation effects
+        document.querySelectorAll('.cta-button').forEach(button => {
+            button.addEventListener('mouseover', function() {
+                this.innerHTML = '🚀 YES! GIVE ME MY $10,000! 🚀';
+            });
+            
+            button.addEventListener('mouseout', function() {
+                this.innerHTML = '🎁 CLAIM YOUR $10,000 NOW! 🎁';
+            });
+        });
+    </script>
+</body>
+</html>

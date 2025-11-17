@@ -1,0 +1,30 @@
+{
+  "name": "oauth-demo",
+  "version": "1.0.0",
+  "description": "OAuth 2.0 Authorization Code Grant - Vulnerable & Secure Implementation Demo",
+  "main": "index.js",
+  "scripts": {
+    "vulnerable:auth": "node vulnerable-auth-server.js",
+    "vulnerable:client": "node vulnerable-client.js",
+    "secure:auth": "node secure-auth-server.js",
+    "secure:client": "node secure-client.js",
+    "attack:demo": "node attack-demonstrations.js",
+    "test": "echo \"Run servers in separate terminals: npm run vulnerable:auth && npm run vulnerable:client\""
+  },
+  "keywords": [
+    "oauth",
+    "security",
+    "csrf",
+    "authorization",
+    "demo",
+    "penetration-testing"
+  ],
+  "author": "Security Training Team - Bin & Khánh",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^13.0.0"
+  }
+}
