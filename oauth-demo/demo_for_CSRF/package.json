@@ -1,0 +1,27 @@
+{
+  "name": "oauth-csrf-simple-demo",
+  "version": "1.0.0",
+  "description": "Simple 4-file demo of OAuth 2.0 CSRF vulnerability and prevention",
+  "main": "server-vulnerable.js",
+  "scripts": {
+    "vulnerable-server": "node server-vulnerable.js",
+    "vulnerable-client": "node client-vulnerable.js",
+    "secure-server": "node server-secure.js",
+    "secure-client": "node client-secure.js"
+  },
+  "keywords": [
+    "oauth",
+    "csrf",
+    "security",
+    "demo",
+    "vulnerability"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "body-parser": "^1.20.2",
+    "uuid": "^9.0.0"
+  }
+}

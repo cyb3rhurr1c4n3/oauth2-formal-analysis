@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth CSRF Attack Flow Diagram</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .flow-box {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .vulnerable {
+            border-top: 5px solid #f44336;
+        }
+
+        .secure {
+            border-top: 5px solid #4caf50;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .vulnerable h2 {
+            color: #f44336;
+        }
+
+        .secure h2 {
+            color: #4caf50;
+        }
+
+        .actor {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid;
+        }
+
+        .attacker {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+
+        .victim {
+            border-left-color: #2196f3;
+            background: #e3f2fd;
+        }
+
+        .server {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 8px;
+            border-left: 3px solid #999;
+            position: relative;
+        }
+
+        .step-number {
+            position: absolute;
+            left: -35px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .flow-box {
+            position: relative;
+            padding-left: 50px;
+        }
+
+        .arrow {
+            text-align: center;
+            margin: 10px 0;
+            color: #666;
+            font-size: 1.5em;
+        }
+
+        .vulnerable .arrow {
+            color: #f44336;
+        }
+
+        .secure .arrow {
+            color: #4caf50;
+        }
+
+        .result {
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .result-bad {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+
+        .result-good {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+
+        .code-snippet {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .highlight-red {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .highlight-green {
+            color: #51cf66;
+            font-weight: bold;
+        }
+
+        .legend {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .legend h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .legend-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+
+        .icon-attacker {
+            background: #ffebee;
+            border: 2px solid #f44336;
+        }
+
+        .icon-victim {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+        }
+
+        .icon-server {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+        }
+
+        @media (max-width: 1200px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 OAuth 2.0 CSRF Attack Flow Comparison</h1>
+
+        <div class="comparison">
+            <!-- VULNERABLE FLOW -->
+            <div class="flow-box vulnerable">
+                <h2>❌ VULNERABLE FLOW (No State)</h2>
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="actor attacker">
+                        <strong>👹 Attacker:</strong> Initiates OAuth flow
+                    </div>
+                    <div class="code-snippet">
+GET /authorize?client_id=APP&redirect_uri=...
+<span class="highlight-red">❌ NO STATE PARAMETER</span>
+                    </div>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="actor server">
+                        <strong>🔐 OAuth Server:</strong> User logs in and authorizes
+                    </div>
+                    <p style="margin-top: 10px;">Attacker login: attacker@email.com</p>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="actor attacker">
+                        <strong>👹 Attacker:</strong> Receives authorization code
+                    </div>
+                    <div class="code-snippet">
+/callback?code=<span class="highlight-red">ATTACKER_CODE</span>
+                    </div>
+                    <p style="margin-top: 10px;">Attacker intercepts and saves the code</p>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="actor attacker">
+                        <strong>👹 Attacker:</strong> Crafts malicious URL
+                    </div>
+                    <div class="code-snippet">
+https://app.com/callback?code=<span class="highlight-red">ATTACKER_CODE</span>
+                    </div>
+                    <p style="margin-top: 10px;">Sends this link to victim via email/chat/etc</p>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="actor victim">
+                        <strong>👤 Victim:</strong> Clicks malicious link
+                    </div>
+                    <p style="margin-top: 10px;">Victim is logged into the app</p>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <div class="actor server">
+                        <strong>💻 Client App:</strong> Processes callback
+                    </div>
+                    <div class="code-snippet">
+<span class="highlight-red">❌ NO STATE VALIDATION!</span>
+Code is from attacker but app doesn't know
+Exchanges code for access token
+Gets attacker's user info
+                    </div>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">7</div>
+                    <div class="actor victim">
+                        <strong>👤 Victim's Session:</strong> Linked to attacker's OAuth
+                    </div>
+                    <div class="code-snippet">
+session.user = {
+  email: "<span class="highlight-red">attacker@email.com</span>",
+  name: "Attacker User"
+}
+                    </div>
+                </div>
+
+                <div class="result result-bad">
+                    ❌ CSRF ATTACK SUCCEEDS!<br>
+                    Victim's account linked to attacker's OAuth
+                </div>
+            </div>
+
+            <!-- SECURE FLOW -->
+            <div class="flow-box secure">
+                <h2>✅ SECURE FLOW (With State)</h2>
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="actor victim">
+                        <strong>👤 Victim:</strong> Clicks "Login with OAuth"
+                    </div>
+                    <div class="code-snippet">
+state = generateRandom()  <span class="highlight-green">// "abc123..."</span>
+session.state = state
+                    </div>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="actor server">
+                        <strong>💻 Client App:</strong> Redirects with state
+                    </div>
+                    <div class="code-snippet">
+GET /authorize?client_id=APP&redirect_uri=...
+<span class="highlight-green">&state=abc123...</span>
+                    </div>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="actor server">
+                        <strong>🔐 OAuth Server:</strong> User authorizes
+                    </div>
+                    <p style="margin-top: 10px;">Victim login: victim@email.com</p>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="actor server">
+                        <strong>🔐 OAuth Server:</strong> Redirects with code + state
+                    </div>
+                    <div class="code-snippet">
+/callback?code=VICTIM_CODE
+<span class="highlight-green">&state=abc123...</span>
+                    </div>
+                </div>
+
+                <div class="arrow" style="color: #f44336; font-weight: bold;">
+                    ⚡ ATTACKER TRIES ATTACK ⚡
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="actor attacker">
+                        <strong>👹 Attacker:</strong> Sends malicious link
+                    </div>
+                    <div class="code-snippet">
+/callback?code=<span class="highlight-red">ATTACKER_CODE</span>
+&state=<span class="highlight-red">wrong_or_missing</span>
+                    </div>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <div class="actor server">
+                        <strong>💻 Client App:</strong> Validates state
+                    </div>
+                    <div class="code-snippet">
+<span class="highlight-green">✅ STATE VALIDATION:</span>
+receivedState = "wrong_or_missing"
+session.state = "abc123..."
+
+if (receivedState !== session.state) {
+  <span class="highlight-green">return "CSRF Attack Detected!"</span>
+}
+                    </div>
+                </div>
+
+                <div class="arrow">↓</div>
+
+                <div class="step">
+                    <div class="step-number">7</div>
+                    <div class="actor server">
+                        <strong>🛡️ Protection:</strong> Request rejected
+                    </div>
+                    <div class="code-snippet">
+<span class="highlight-green">HTTP 403 Forbidden</span>
+Error: "State validation failed"
+                    </div>
+                </div>
+
+                <div class="result result-good">
+                    ✅ CSRF ATTACK BLOCKED!<br>
+                    State validation prevents account linking
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h3>📚 Legend & Key Concepts</h3>
+            
+            <div class="legend-item">
+                <div class="legend-icon icon-attacker">👹</div>
+                <div>
+                    <strong>Attacker:</strong> Malicious user trying to link victim's account to their OAuth
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-icon icon-victim">👤</div>
+                <div>
+                    <strong>Victim:</strong> Legitimate user who falls for the attack (without state parameter)
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-icon icon-server">🔐</div>
+                <div>
+                    <strong>OAuth Server:</strong> Authorization server (e.g., Google, Facebook)
+                </div>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <h4>🔑 State Parameter:</h4>
+                <ul style="margin-left: 20px; line-height: 2;">
+                    <li><strong>Purpose:</strong> Prevent CSRF attacks in OAuth flow</li>
+                    <li><strong>Generation:</strong> Cryptographically secure random string</li>
+                    <li><strong>Storage:</strong> Stored in user's session on client app</li>
+                    <li><strong>Validation:</strong> Must match between request and callback</li>
+                    <li><strong>Lifetime:</strong> Single-use, expires after validation</li>
+                </ul>
+            </div>
+
+            <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 10px; border-left: 5px solid #ffc107;">
+                <h4>⚠️ Why Vulnerable Code Fails:</h4>
+                <p style="margin-top: 10px; line-height: 1.8;">
+                    Without state parameter, the client app has <strong>no way to verify</strong> 
+                    if the authorization code in the callback came from the user who initiated 
+                    the OAuth flow. An attacker can inject their own code, and the app will 
+                    happily process it, linking the victim's session to the attacker's OAuth account.
+                </p>
+            </div>
+
+            <div style="margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 5px solid #4caf50;">
+                <h4>✅ How State Parameter Protects:</h4>
+                <p style="margin-top: 10px; line-height: 1.8;">
+                    The state parameter creates a cryptographic binding between the OAuth initiation 
+                    and the callback. Since the state is stored in the victim's session and is 
+                    unpredictable to the attacker, any callback with a mismatched or missing state 
+                    is immediately identified as a CSRF attack and blocked.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

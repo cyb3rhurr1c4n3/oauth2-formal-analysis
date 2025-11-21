@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth 2.0 CSRF Attack Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+
+        .card-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: background 0.3s;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #f44336;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .btn-success {
+            background: #4caf50;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 2em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .accounts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .account-card {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid;
+        }
+
+        .victim {
+            border-left-color: #2196f3;
+        }
+
+        .attacker {
+            border-left-color: #f44336;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .files-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .files-list li {
+            background: #f9f9f9;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-desc {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-vulnerable {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .badge-secure {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .badge-doc {
+            background: #bbdefb;
+            color: #1565c0;
+        }
+
+        .steps {
+            counter-reset: step;
+            list-style: none;
+            padding: 0;
+        }
+
+        .steps li {
+            counter-increment: step;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            position: relative;
+            padding-left: 70px;
+        }
+
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 35px;
+            height: 35px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 50px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 OAuth 2.0 CSRF Attack Demo</h1>
+            <p>Comprehensive demonstration of CSRF vulnerability in OAuth 2.0 and its prevention</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">❌</div>
+                <h3>Vulnerable Version</h3>
+                <p>Demo lỗ hổng CSRF trong OAuth 2.0 khi không sử dụng state parameter. Attack sẽ THÀNH CÔNG!</p>
+                <a href="#vulnerable" class="btn btn-danger">View Vulnerable Demo</a>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">✅</div>
+                <h3>Secure Version</h3>
+                <p>Demo implementation an toàn với state parameter validation. Attack sẽ BỊ CHẶN!</p>
+                <a href="#secure" class="btn btn-success">View Secure Demo</a>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>Visual Diagram</h3>
+                <p>Sơ đồ trực quan so sánh attack flow giữa vulnerable và secure implementations.</p>
+                <a href="attack-flow-diagram.html" class="btn" target="_blank">Open Diagram</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Project Files</h2>
+            <ul class="files-list">
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">server-vulnerable.js</div>
+                        <div class="file-desc">OAuth Server có lỗ hổng - Port 4001</div>
+                    </div>
+                    <span class="badge badge-vulnerable">Vulnerable</span>
+                </li>
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">client-vulnerable.js</div>
+                        <div class="file-desc">OAuth Client có lỗ hổng - Port 4000</div>
+                    </div>
+                    <span class="badge badge-vulnerable">Vulnerable</span>
+                </li>
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">server-secure.js</div>
+                        <div class="file-desc">OAuth Server an toàn - Port 5001</div>
+                    </div>
+                    <span class="badge badge-secure">Secure</span>
+                </li>
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">client-secure.js</div>
+                        <div class="file-desc">OAuth Client an toàn - Port 5000</div>
+                    </div>
+                    <span class="badge badge-secure">Secure</span>
+                </li>
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">README.md</div>
+                        <div class="file-desc">Hướng dẫn chi tiết và full documentation</div>
+                    </div>
+                    <span class="badge badge-doc">Doc</span>
+                </li>
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">FILE_DOCUMENTATION.md</div>
+                        <div class="file-desc">Chi tiết từng file và code comparison</div>
+                    </div>
+                    <span class="badge badge-doc">Doc</span>
+                </li>
+                <li>
+                    <div class="file-info">
+                        <div class="file-name">QUICK_START.md</div>
+                        <div class="file-desc">Quick reference guide</div>
+                    </div>
+                    <span class="badge badge-doc">Doc</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section" id="vulnerable">
+            <h2>❌ Vulnerable Version Demo</h2>
+            <h3 style="margin-top: 25px;">Quick Start:</h3>
+            <div class="code-block">
+# Terminal 1 - OAuth Server
+node server-vulnerable.js
+
+# Terminal 2 - Client App  
+node client-vulnerable.js
+            </div>
+
+            <h3 style="margin-top: 25px;">Steps to Reproduce Attack:</h3>
+            <ol class="steps">
+                <li>
+                    <strong>Mở Attacker Page:</strong><br>
+                    Navigate to <code>http://localhost:4000/attacker-page</code>
+                </li>
+                <li>
+                    <strong>Get Authorization Code:</strong><br>
+                    Click "Start OAuth Flow" và login: <code>attacker@email.com</code> / <code>attacker123</code>
+                </li>
+                <li>
+                    <strong>Copy Code:</strong><br>
+                    Từ URL callback, copy authorization code
+                </li>
+                <li>
+                    <strong>Generate Malicious Link:</strong><br>
+                    Paste code và click "Generate CSRF Attack Link"
+                </li>
+                <li>
+                    <strong>Victim Clicks Link:</strong><br>
+                    Open <code>http://localhost:4000</code> và paste malicious link
+                </li>
+                <li>
+                    <strong>Observe Result:</strong><br>
+                    ❌ Attack thành công! User info hiển thị attacker's email
+                </li>
+            </ol>
+
+            <div style="background: #ffebee; padding: 20px; border-radius: 10px; border-left: 5px solid #f44336; margin-top: 20px;">
+                <strong>⚠️ Kết quả:</strong><br>
+                Victim's session bị link với OAuth account của attacker. Attacker có thể access dữ liệu của victim!
+            </div>
+        </div>
+
+        <div class="section" id="secure">
+            <h2>✅ Secure Version Demo</h2>
+            <h3 style="margin-top: 25px;">Quick Start:</h3>
+            <div class="code-block">
+# Terminal 1 - OAuth Server
+node server-secure.js
+
+# Terminal 2 - Client App
+node client-secure.js
+            </div>
+
+            <h3 style="margin-top: 25px;">Steps to Try Attack (Will Fail):</h3>
+            <ol class="steps">
+                <li>
+                    <strong>Mở Attacker Page:</strong><br>
+                    Navigate to <code>http://localhost:5000/attacker-page</code>
+                </li>
+                <li>
+                    <strong>Try Same Attack:</strong><br>
+                    Thực hiện các bước giống như vulnerable version
+                </li>
+                <li>
+                    <strong>Victim Clicks Link:</strong><br>
+                    Paste malicious link vào browser
+                </li>
+                <li>
+                    <strong>Observe Result:</strong><br>
+                    ✅ Attack BỊ CHẶN! Error: "CSRF Attack Detected"
+                </li>
+            </ol>
+
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; border-left: 5px solid #4caf50; margin-top: 20px;">
+                <strong>✅ Kết quả:</strong><br>
+                State validation chặn attack thành công. Error message hiển thị rõ ràng và request bị reject.
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>👥 Demo Accounts</h2>
+            <div class="accounts">
+                <div class="account-card victim">
+                    <h3>👤 Victim User</h3>
+                    <p><strong>Email:</strong> victim@email.com</p>
+                    <p><strong>Password:</strong> victim123</p>
+                    <p style="margin-top: 10px; color: #666;">
+                        Use this account to demonstrate being attacked
+                    </p>
+                </div>
+                <div class="account-card attacker">
+                    <h3>👹 Attacker User</h3>
+                    <p><strong>Email:</strong> attacker@email.com</p>
+                    <p><strong>Password:</strong> attacker123</p>
+                    <p style="margin-top: 10px; color: #666;">
+                        Use this account to generate malicious links
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Key Learning Points</h2>
+            <div style="line-height: 2; font-size: 1.1em;">
+                <p>✅ <strong>State Parameter là BẮT BUỘC</strong> trong OAuth 2.0 Authorization Code Flow</p>
+                <p>✅ <strong>State phải cryptographically random</strong> và đủ dài (32+ bytes)</p>
+                <p>✅ <strong>State phải lưu server-side</strong> (session), không lưu client-side</p>
+                <p>✅ <strong>Validate state trong callback</strong> là critical security check</p>
+                <p>✅ <strong>State phải one-time use</strong> và có expiry time</p>
+                <p>✅ <strong>Không có state = Vulnerable to CSRF</strong> attack 100%</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📚 Documentation</h2>
+            <div class="grid">
+                <div style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
+                    <h4 style="margin-bottom: 10px;">📄 README.md</h4>
+                    <p>Hướng dẫn đầy đủ, step-by-step instructions</p>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
+                    <h4 style="margin-bottom: 10px;">📄 FILE_DOCUMENTATION.md</h4>
+                    <p>Chi tiết từng file, code comparison</p>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
+                    <h4 style="margin-bottom: 10px;">📄 QUICK_START.md</h4>
+                    <p>Quick reference, 2-minute start guide</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🔐 OAuth 2.0 CSRF Attack Demonstration</p>
+            <p style="margin-top: 10px;">Created for educational purposes only</p>
+        </div>
+    </div>
+</body>
+</html>
