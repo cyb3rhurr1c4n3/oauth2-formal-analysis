@@ -1,0 +1,153 @@
+=======================================REDICT URL============================================
+1. Phần trình bày về Lỗ hổng (Cải thiện lời thoại)
+Bạn có thể nói như sau (tôi chia làm 2 ý để bạn dễ ngắt nhịp):
+
+(Về bản chất lỗ hổng): "Thưa thầy, lỗ hổng đầu tiên em muốn demo là Open Redirect trong quy trình OAuth. Nguyên nhân cốt lõi là do Authorization Server tin tưởng tuyệt đối vào tham số redirect_uri mà Client gửi lên mà không có bất kỳ bước kiểm tra (validation) nào so với cấu hình gốc."
+
+(Về kịch bản tấn công): "Kẻ tấn công có thể lợi dụng điều này để tạo ra một đường link đăng nhập trông rất hợp lệ (vì trỏ về domain thật của Server). Tuy nhiên, tham số redirect_uri đã bị thay đổi thành trang web của Attacker.
+
+Khi người dùng tin tưởng click vào và đăng nhập thành công, thay vì quay về ứng dụng gốc, Server sẽ gửi kèm Authorization Code và chuyển hướng người dùng thẳng sang trang web độc hại. Từ đó, kẻ tấn công chiếm được Code và có thể đổi lấy Access Token để xâm nhập tài khoản."
+
+2. Phần trình bày về Cách khắc phục (Nội dung bạn nhờ viết)
+Sau khi demo xong và thầy gật đầu, bạn chuyển sang phần giải pháp (Fix) như sau:
+
+(Giải pháp kỹ thuật): "Để khắc phục triệt để lỗ hổng này, chúng ta cần áp dụng cơ chế Strict Whitelisting (Danh sách trắng nghiêm ngặt) tại phía Server."
+
+(Giải thích chi tiết): "Cụ thể, trong Database của Authorization Server, mỗi Client ID khi đăng ký bắt buộc phải khai báo trước các đường dẫn redirect_uri hợp lệ.
+
+Trong quá trình xử lý request đăng nhập, Server phải thực hiện so khớp chính xác từng ký tự (Exact String Matching) giữa redirect_uri mà request gửi lên với danh sách đã đăng ký trong Database.
+
+Nếu khớp hoàn toàn 100%: Cho phép tiếp tục.
+
+Nếu sai khác dù chỉ 1 ký tự (hoặc là subdomain): Từ chối ngay lập tức."
+
+(Liên hệ vào code Secure): "Trong phiên bản code đã vá lỗi của em, em đã thêm đoạn kiểm tra logic if (!client.redirect_uris.includes(redirect_uri)) để đảm bảo chỉ những URI được cấp phép mới nhận được Authorization Code."
+=======================================REPLAY CODE============================================
+1. Giới thiệu Lỗ hổng (Phiên bản Vulnerable)
+"Thưa thầy/các bạn, lỗ hổng thứ hai em muốn trình bày là Tấn công Tái sử dụng Mã Ủy Quyền (Authorization Code Replay Attack).
+
+Bản chất lỗi: Lỗ hổng này xuất phát từ việc Authorization Server (của chúng ta là Server 3001) không vô hiệu hóa Mã Ủy Quyền sau khi nó đã được đổi thành Access Token lần đầu tiên. Code có thể được sử dụng lại nhiều lần."
+
+Kịch bản Tấn công:
+
+"Kẻ tấn công có thể nghe lén và đánh cắp Mã Ủy Quyền (qua log hoặc qua network traffic). Sau khi Client hợp lệ đã dùng Code đó để đăng nhập thành công, kẻ tấn công sẽ dùng chính Code đó để tạo ra một Access Token mới cho riêng mình.
+
+Trong demo vừa rồi, khi chúng ta dùng lệnh curl để gọi endpoint /token lần thứ hai với cùng một Mã Code:
+
+Server Vulnerable (3001) đã: Chấp nhận Code cũ và cấp một Access Token mới.
+
+Điều này vi phạm nghiêm trọng chuẩn bảo mật OAuth 2.0, cho phép kẻ tấn công liên tục chiếm quyền truy cập."
+
+2. Hướng Khắc phục & Cơ chế One-Time Use (Phiên bản Secure)
+"Để khắc phục triệt để lỗ hổng này, chúng ta cần triển khai hai cơ chế bảo mật chính trên Authorization Server (Server 3003):
+
+A. Cơ chế One-Time Use (Sử dụng một lần duy nhất)
+"Server Secure phải đánh dấu Code là đã được sử dụng (used: true) ngay lập tức sau khi hoàn thành giao dịch đổi Code lấy Token lần đầu tiên.
+
+Logic: Nếu Server nhận được yêu cầu đổi Token với một Code đã có trạng thái used: true, nó phải từ chối ngay lập tức và xóa Code đó khỏi hệ thống."
+
+B. Thêm Hạn Sử Dụng (Time-To-Live - TTL)
+"Để giảm thiểu thời gian Code có thể bị tấn công, Server Secure chỉ cấp Mã Ủy Quyền với thời gian tồn tại rất ngắn, ví dụ 10 phút.
+
+Trong code Secure: Nếu Code hết hạn (Date.now() > authCode.expiresAt), Server sẽ xóa và từ chối, hạn chế cửa sổ tấn công của Hacker."
+
+3. Demo Khắc phục (Phiên bản Secure)
+"Bây giờ chúng ta sẽ chứng minh cơ chế này hoạt động hiệu quả trên Server Secure (3003).
+
+Kịch bản Thử nghiệm:
+
+"Em đã thực hiện lại đúng các bước: Client App đã dùng Code X để đăng nhập hợp lệ. Sau đó, em dùng curl để cố gắng gửi lại Code X lần thứ hai.
+
+Kết quả trên CMD (Hacker nhận được): {"error":"invalid_grant"}
+
+Bằng chứng Bảo mật (Audit Log Server 3003): Log ghi lại: [AUDIT] TOKEN_FAILED: { reason: 'Code already used', security_alert: true }
+
+Kết luận cuối cùng:
+
+"Kết quả này cho thấy Server Secure đã chặn đứng thành công nỗ lực tái sử dụng Code. Thay vì cấp Token mới, Server chỉ trả về lỗi và ghi lại cảnh báo security_alert vào log. Đây là bằng chứng cho thấy cơ chế One-Time Use đang bảo vệ an toàn cho luồng OAuth."
+=======================================CSRF============================================
+Các bước Tấn công
+Kịch bản: Nạn nhân đã đăng nhập vào server Auth (3001) và đang có phiên cookie hợp lệ. Kẻ tấn công biết endpoint /callback của Client App (3002).
+
+Bước 1: Kẻ tấn công tạo một Code giả
+Trong môi trường thực, kẻ tấn công sẽ tự đăng nhập và lấy được một code hợp lệ. Ở đây, ta chỉ cần một code bất kỳ vì server Vulnerable không kiểm tra tính hợp lệ của code này trong ngữ cảnh phiên của người dùng.
+
+Giả sử Kẻ tấn công dùng Code: ATTACKER_CODE_123456789
+
+Bước 2: Kẻ tấn công tạo liên kết độc hại
+Kẻ tấn công gửi cho nạn nhân một liên kết ép trình duyệt của nạn nhân gọi đến endpoint /callback của Client App (3002).
+
+Bạn hãy mở một cửa sổ trình duyệt và dán link tấn công sau (hoặc dùng curl nhưng cách này trực quan hơn):
+
+http://localhost:3002/callback?code=ATTACKER_CODE_123456789
+Bước 3: Nạn nhân thực hiện request
+Bạn nhấn Enter để truy cập link đó (giả lập nạn nhân click vào link độc hại).
+
+❌ Kết quả Tấn công (Vulnerable)
+Trên trình duyệt (Nạn nhân): Client App (3002) sẽ cố gắng trao đổi Code: ATTACKER_CODE_123456789 với server Auth (3001).
+
+Trên Console của Client App (3002):
+
+Bạn sẽ thấy Client App chấp nhận Code này vì nó không có tham số state để đối chiếu.
+
+Nếu Code này hợp lệ, Client App sẽ đổi Code thành Token và đăng nhập nạn nhân. Nếu Code không hợp lệ (như ATTACKER_CODE_123456789), Client App sẽ báo lỗi nhưng đã thực hiện thao tác Token Exchange.
+
+Quan trọng nhất: Vì không có state, Client App không thể xác định liệu request callback này có phải xuất phát từ phiên mà nó khởi tạo hay không. Lỗ hổng CSRF đã được chứng minh.
+
+2. Demo Chống CSRF (Secure Version)
+🎯 Biện pháp Khắc phục: Tham số state
+Phiên bản Secure sử dụng tham số state (một chuỗi ngẫu nhiên dài và duy nhất) được sinh ra trước khi redirect người dùng. Client App sẽ:
+
+Lưu state vào bộ nhớ cục bộ (với thời gian hết hạn).
+
+Gửi state này cùng request Authorization.
+
+Khi nhận callback, Client App BẮT BUỘC phải kiểm tra state nhận được từ URL có khớp với state đã lưu hay không.
+
+Chuẩn bị
+Tắt các server đang chạy (Ctrl + C).
+
+Chạy lại Server Auth Secure: node server-secure.js (Port 3003).
+
+Chạy lại Client App Secure: node secure-client.js (Port 3004).
+
+Các bước Thử nghiệm Khắc phục
+Bước 1: Kẻ tấn công tạo liên kết độc hại (như cũ)
+Kẻ tấn công không biết giá trị state hợp lệ của nạn nhân. Bạn lặp lại liên kết tấn công đã dùng ở trên:
+
+http://localhost:3004/callback?code=ATTACKER_CODE_123456789
+Bạn hãy mở một cửa sổ trình duyệt và dán link này vào (giả lập nạn nhân click vào link độc hại).
+
+Bước 2: Nạn nhân thực hiện request và kết quả
+Bạn nhấn Enter để truy cập link đó.
+
+✅ Kết quả Chống Tấn công (Secure)
+Trên trình duyệt (Nạn nhân): Trình duyệt sẽ hiển thị trang lỗi.
+
+Security Error
+Invalid or expired state parameter. This may indicate a CSRF attack.
+Trên Console của Client App (3004):
+
+Bạn sẽ thấy log: [SECURE] Invalid or expired state parameter - possible CSRF attack!
+
+Client App từ chối request callback vì:
+
+Hoặc tham số state bị thiếu (trong link tấn công không có state).
+
+Hoặc tham số state có nhưng không khớp với bất kỳ state nào đã được lưu (vì kẻ tấn công không thể đoán được chuỗi ngẫu nhiên đó).
+
+Kết luận: Nhờ sử dụng và kiểm tra tham số state, Client App Secure đã chặn đứng được cuộc tấn công CSRF.
+=======================================CSRF============================================
+Chúng ta sẽ mô phỏng việc Nạn nhân đang có session hợp lệ trên Client (localhost:4000), và Kẻ tấn công sử dụng code của mình để chiếm quyền.Bước 1: Thiết lập Phiên Nạn nhân (Victim Session)Nạn nhân mở trình duyệt và đăng nhập vào OAuth Client (localhost:4000/) bằng tài khoản: victim@email.com.Trạng thái: Nạn nhân có một Session Cookie hợp lệ trên Client.Bước 2: Kẻ tấn công lấy Code của chính mình (Attacker Code)Kẻ tấn công khởi tạo luồng OAuth để lấy mã ủy quyền Code cho tài khoản của mình: attacker@email.com.Do chúng ta đã sửa code, luồng sẽ dừng tại endpoint /code-display sau khi Provider cấp code.Kẻ tấn công copy mã code hợp lệ (ví dụ: CODE_MỚI_VÀ_CHƯA_DÙNG) từ console server hoặc trang /code-display.Trạng thái: Kẻ tấn công có: code_attacker (Code này chưa được sử dụng lần nào).Bước 3: Tạo và Gửi Malicious LinkKẻ tấn công tạo một liên kết độc hại (Malicious Link) bằng cách nhúng code_attacker vào URL callback của Client:http://localhost:4000/callback?code=CODE_ATTACKER_HỢP_LỆ
+Kẻ tấn công gửi link này cho Nạn nhân (ví dụ: qua email lừa đảo).Bước 4: Kích hoạt Tấn công (The Attack Trigger)Nạn nhân (vẫn đang đăng nhập) click vào Malicious Link.Trình duyệt của Nạn nhân gửi request sau:$$\text{GET } /callback\text{?code=CODE\_ATTACKER\_HỢP\_LỆ}$$Yêu cầu này mang theo Session Cookie của Nạn nhân.💥 Kết quả Tấn côngEndpoint /callback của Client nhận code.Do Client KHÔNG có logic kiểm tra state, nó chấp nhận code này.Client sử dụng Code của Attacker để đổi Access Token của Attacker.Client dùng Token này để lấy User Info của attacker@email.com.Client ghi đè phiên của Nạn nhân bằng thông tin của Kẻ tấn công.Trang chủ Client hiển thị Name: Attacker User.Tài khoản của Nạn nhân đã bị chiếm đoạt (Account Takeover) và liên kết với tài khoản OAuth của Kẻ tấn công.
+
+
+"Vậy làm thế nào để ngăn chặn attack này?
+Câu trả lời là: State Parameter.
+State parameter là một giá trị random, được client generate ra khi bắt đầu OAuth flow, và được validate khi nhận callback.
+Cơ chế hoạt động:
+Bước 1: Client generate random state và lưu vào session
+Bước 2: Client gửi state này cùng với authorization request
+Bước 3: Authorization Server trả về state cùng với code
+Bước 4: Client validate: state nhận được có match với state đã lưu không?
+Nếu không match → Reject! Đây là CSRF attack!"
