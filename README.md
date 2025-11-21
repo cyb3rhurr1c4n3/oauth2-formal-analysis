@@ -557,5 +557,3 @@ Nếu có câu hỏi hoặc gặp vấn đề, hãy:
 4. Đảm bảo tất cả dependencies đã cài đặt
 
 ---
-
-**Happy Hacking! 🔐**
