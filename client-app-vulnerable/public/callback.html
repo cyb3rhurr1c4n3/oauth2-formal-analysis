@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth Callback - Vulnerable Client</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    .banner {
+      background: #ff5252;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .error {
+      background: #ffebee;
+      color: #c62828;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #c62828;
+      margin: 20px 0;
+    }
+    
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .warning-box h3 {
+      color: #856404;
+      margin-bottom: 15px;
+    }
+    
+    .danger-box {
+      background: #ffebee;
+      border-left: 4px solid #f44336;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .danger-box h3 {
+      color: #c62828;
+      margin-bottom: 15px;
+    }
+    
+    .danger-box ul {
+      margin-left: 20px;
+      color: #c62828;
+    }
+    
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 13px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="banner">
+      <h2>🚨 VULNERABLE CALLBACK HANDLER</h2>
+    </div>
+    
+    <h1>Processing Authorization...</h1>
+    
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Exchanging authorization code for access token...</p>
+    </div>
+    
+    <div class="danger-box">
+      <h3>🚨 Vulnerabilities in this Callback Handler</h3>
+      <ul>
+        <li><strong>Authorization code visible in URL:</strong> Exposed in browser history</li>
+        <li><strong>No state validation:</strong> CSRF attack possible</li>
+        <li><strong>Client-side token exchange:</strong> Entire flow exposed to browser</li>
+        <li><strong>No PKCE verification:</strong> Intercepted codes can be exploited</li>
+        <li><strong>Token stored in localStorage:</strong> Vulnerable to XSS</li>
+        <li><strong>Sensitive data logged:</strong> Codes and tokens in console</li>
+      </ul>
+    </div>
+    
+    <div id="errorContainer"></div>
+    
+    <div class="warning-box">
+      <h3>🔍 What's Happening (Debug View)</h3>
+      <p style="color: #856404; margin-bottom: 10px;">
+        Watch the browser console to see all the vulnerabilities in action:
+      </p>
+      <ul style="margin-left: 20px; color: #856404;">
+        <li>Authorization code logged to console</li>
+        <li>Token exchange request visible</li>
+        <li>Access token logged and stored insecurely</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // VULNERABILITY #1: The authorization code is in the URL query parameters
+    // This means it's visible in:
+    // - Browser history
+    // - Server logs (if they log URLs)
+    // - Referrer headers if user navigates away
+    // - Browser extensions
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const error = urlParams.get('error');
+    
+    // VULNERABILITY #2: Logging the authorization code
+    console.log('VULNERABILITY: Authorization code received:', code);
+    console.log('VULNERABILITY: Current URL with code:', window.location.href);
+    console.log('VULNERABILITY: This code is now in browser history!');
+    
+    async function handleCallback() {
+      if (error) {
+        showError('Authorization failed: ' + error);
+        return;
+      }
+      
+      if (!code) {
+        showError('No authorization code received');
+        return;
+      }
+      
+      // VULNERABILITY #3: No state parameter validation
+      // Even if we received a state parameter, we're not checking if it matches
+      // what we sent in the authorization request
+      // This makes the app vulnerable to CSRF attacks
+      if (!state) {
+        console.warn('VULNERABILITY: No state parameter received - CSRF protection missing');
+      } else {
+        console.warn('VULNERABILITY: State parameter received but NOT validated:', state);
+      }
+      
+      try {
+        // Get OAuth config
+        const configResponse = await fetch('/api/config');
+        const config = await configResponse.json();
+        
+        // VULNERABILITY #4: Token exchange happening client-side
+        // This entire OAuth flow is visible in the browser
+        // In a secure implementation, this should happen server-side
+        
+        // VULNERABILITY #5: No code_verifier being sent
+        // Because we didn't generate one in the first place (no PKCE)
+        const tokenRequest = {
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: config.redirect_uri,
+          client_id: config.client_id
+          // MISSING: code_verifier for PKCE
+        };
+        
+        // VULNERABILITY #6: Logging the token request
+        console.log('VULNERABILITY: Token request (visible in browser):', tokenRequest);
+        
+        const tokenResponse = await fetch(config.token_endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams(tokenRequest)
+        });
+        
+        if (!tokenResponse.ok) {
+          const errorData = await tokenResponse.json();
+          throw new Error(errorData.error_description || errorData.error || 'Token exchange failed');
+        }
+        
+        const tokenData = await tokenResponse.json();
+        
+        // VULNERABILITY #7: Logging the access token!
+        console.log('VULNERABILITY: Access token received:', tokenData.access_token);
+        console.log('VULNERABILITY: Full token response:', tokenData);
+        
+        // VULNERABILITY #8: Storing access token in localStorage
+        // localStorage is:
+        // - Accessible to any JavaScript code (including XSS attacks)
+        // - Not cleared when browser closes
+        // - Accessible across all tabs
+        // - Not sent automatically like cookies
+        localStorage.setItem('access_token', tokenData.access_token);
+        
+        console.log('VULNERABILITY: Token stored in localStorage (accessible to XSS attacks)');
+        
+        // VULNERABILITY #9: Not clearing the authorization code from the URL
+        // It remains in browser history
+        console.warn('VULNERABILITY: Authorization code still in URL - visible in browser history');
+        
+        // Redirect to main page
+        // Note: Even after redirect, the code is still in browser history
+        window.location.href = '/';
+        
+      } catch (error) {
+        console.error('Token exchange error:', error);
+        showError('Failed to exchange authorization code: ' + error.message);
+      }
+    }
+    
+    function showError(message) {
+      const errorContainer = document.getElementById('errorContainer');
+      errorContainer.innerHTML = `
+        <div class="error">
+          <h3>❌ Error</h3>
+          <p>${message}</p>
+        </div>
+      `;
+      document.getElementById('loading').style.display = 'none';
+    }
+    
+    // Start the callback handling
+    handleCallback();
+  </script>
+</body>
+</html>

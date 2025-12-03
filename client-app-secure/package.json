@@ -1,0 +1,16 @@
+{
+  "name": "client-app-secure",
+  "version": "1.0.0",
+  "description": "Secure OAuth 2.0 client application with proper PKCE implementation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["oauth2", "pkce", "secure", "educational"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3"
+  }
+}

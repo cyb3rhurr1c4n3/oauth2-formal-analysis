@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Vulnerable Auth Server</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .login-container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-width: 400px;
+      width: 100%;
+    }
+    
+    .banner {
+      background: #ff5252;
+      color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      color: #555;
+      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    button:hover {
+      background: #5568d3;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    .info-box strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #1976d2;
+    }
+    
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      border-left: 4px solid #c62828;
+      display: none;
+    }
+    
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #856404;
+    }
+    
+    .warning-box ul {
+      margin: 10px 0 0 20px;
+    }
+    
+    .warning-box li {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="banner">
+      🚨 VULNERABLE VERSION
+    </div>
+    
+    <h1>🔐 Auth Server</h1>
+    <p class="subtitle">Authorization Server Login</p>
+    
+    <div class="error-message" id="errorMessage"></div>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          required 
+          autocomplete="username"
+          placeholder="Enter username"
+        >
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          required 
+          autocomplete="current-password"
+          placeholder="Enter password"
+        >
+      </div>
+      
+      <button type="submit" id="loginButton">Login</button>
+    </form>
+    
+    <div class="info-box">
+      <strong>Test Credentials:</strong>
+      Username: <code>demo</code><br>
+      Password: <code>password123</code>
+    </div>
+    
+    <div class="warning-box">
+      <strong>⚠️ Security Vulnerabilities:</strong>
+      <ul>
+        <li>Passwords stored in plain text</li>
+        <li>Detailed error messages reveal username existence</li>
+        <li>Credentials logged to server console</li>
+        <li>No rate limiting on login attempts</li>
+        <li>Timing attacks possible on username check</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // VULNERABILITY: Sending credentials over potentially insecure connection
+    // In production, HTTPS would be mandatory
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const loginButton = document.getElementById('loginButton');
+      const errorMessage = document.getElementById('errorMessage');
+      
+      // Get redirect parameter from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirect = urlParams.get('redirect');
+      
+      loginButton.disabled = true;
+      loginButton.textContent = 'Logging in...';
+      errorMessage.style.display = 'none';
+      
+      try {
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            username,
+            password,
+            redirect: redirect || ''
+          })
+        });
+        
+        if (response.redirected) {
+          window.location.href = response.url;
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          if (redirect) {
+            window.location.href = redirect;
+          } else {
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = 'Login successful!';
+            errorMessage.style.background = '#e8f5e9';
+            errorMessage.style.color = '#2e7d32';
+            errorMessage.style.borderLeftColor = '#2e7d32';
+          }
+        } else {
+          // VULNERABILITY: Displaying detailed error messages
+          // This helps attackers enumerate valid usernames
+          errorMessage.style.display = 'block';
+          errorMessage.textContent = data.message || 'Login failed';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = 'An error occurred. Please try again.';
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = 'Login';
+      }
+    });
+  </script>
+</body>
+</html>

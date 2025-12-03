@@ -1,0 +1,22 @@
+{
+  "name": "client-app-vulnerable",
+  "version": "1.0.0",
+  "description": "Intentionally vulnerable OAuth 2.0 client application for educational purposes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "oauth2",
+    "pkce",
+    "vulnerable",
+    "educational"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.18.2",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSRF Attack Demonstration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #e74c3c;
+        }
+        h1 { color: #e74c3c; }
+        h2 { color: #3498db; margin-top: 30px; }
+        .step {
+            background: #333;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 5px solid #3498db;
+            border-radius: 5px;
+        }
+        .attacker { border-left-color: #e74c3c; }
+        .victim { border-left-color: #f39c12; }
+        button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        button.victim-btn { background: #f39c12; }
+        button:hover { opacity: 0.8; }
+        .url-box {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            word-wrap: break-word;
+            margin: 15px 0;
+            border: 1px solid #555;
+        }
+        .danger { color: #e74c3c; font-weight: bold; }
+        .success { color: #2ecc71; font-weight: bold; }
+        .warning { color: #f39c12; font-weight: bold; }
+        .info {
+            background: #1f3d5c;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSRF Attack Demonstration</h1>
+        <p>This demonstrates a working CSRF attack on OAuth flow without state parameter validation.</p>
+
+        <div class="info">
+            <strong>How This CSRF Attack Works:</strong>
+            <p>The CSRF vulnerability allows an attacker to trick a victim into linking their OAuth account to the attacker's application session.</p>
+            <p><strong>Real-world scenario:</strong> Attacker is logged into App.com, starts "Link OAuth Account", captures URL, sends it to victim. Victim clicks and authorizes, thinking they're linking their own account, but actually links to attacker's App.com profile.</p>
+            <p><strong>In this demo:</strong> Since we're using same browser/session for simplicity, we'll show the vulnerability by demonstrating that authorization completes WITHOUT validating who initiated it.</p>
+        </div>
+
+        <h2>CSRF Vulnerability Test</h2>
+        
+        <div class="step attacker">
+            <h3 class="danger">Step 1: Capture Malicious Authorization URL</h3>
+            <p>This URL contains NO state parameter, making it vulnerable to CSRF:</p>
+            <button onclick="generateMaliciousURL()">Generate CSRF Attack URL</button>
+            <div id="maliciousURL"></div>
+        </div>
+
+        <div class="step victim">
+            <h3 class="warning">Step 2: Victim Opens the Malicious Link</h3>
+            <p>The victim receives this link (via email/chat) and clicks it:</p>
+            <div id="victimSection" style="display:none;">
+                <button class="victim-btn" onclick="openAsVictim()">Click Here as Victim</button>
+                <p>Login with: <code>victim / victim123</code> and click "Allow"</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3 class="success">Step 3: See the Vulnerability</h3>
+            <p>After authorization, notice:</p>
+            <ul>
+                <li>The callback URL has NO state parameter to verify</li>
+                <li>The server accepts ANY authorization code</li>
+                <li>No way to detect if user initiated this OAuth flow</li>
+                <li>In real attack: victim's account links to attacker's session</li>
+            </ul>
+            <button onclick="showURLAnalysis()">Analyze Callback URL</button>
+            <div id="analysis"></div>
+        </div>
+
+        <div class="info">
+            <h3>Why This Works:</h3>
+            <ul>
+                <li>No state parameter to verify the request origin</li>
+                <li>Server-side session stores the token from ANY authorization</li>
+                <li>Attacker's browser shares the same session cookie</li>
+                <li>When victim authorizes, it completes attacker's OAuth flow</li>
+                <li>Attacker's session now has victim's account access</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>How State Parameter Would Prevent This:</h3>
+            <pre style="background: #1a1a1a; padding: 15px; border-radius: 5px; overflow-x: auto;">
+// Attacker initiates OAuth
+const attackerState = generateRandomState();
+saveToSession(attackerState);
+
+// Victim clicks malicious link
+// Victim's browser has DIFFERENT session, DIFFERENT state
+
+// Callback validates:
+if (receivedState !== sessionState) {
+    throw Error('CSRF detected!');
+}
+// Attack blocked!</pre>
+        </div>
+    </div>
+
+    <script>
+        let maliciousURL = '';
+
+        function generateMaliciousURL() {
+            // Generate OAuth authorization URL without state parameter
+            const authURL = 'http://localhost:4000/authorize';
+            const params = new URLSearchParams({
+                response_type: 'code',
+                client_id: 'client-app-vulnerable',
+                redirect_uri: 'http://localhost:3000/callback-server',
+                scope: 'profile email'
+                // VULNERABILITY: NO STATE PARAMETER!
+            });
+
+            maliciousURL = `${authURL}?${params.toString()}`;
+
+            document.getElementById('maliciousURL').innerHTML = `
+                <div style="margin-top: 15px;">
+                    <p class="success">Malicious URL Generated (without state parameter):</p>
+                    <div class="url-box">${maliciousURL}</div>
+                    <button onclick="copyURL()">Copy URL</button>
+                    <p class="danger">Notice: No <code>&state=...</code> in the URL!</p>
+                    <p>This makes it impossible to verify who initiated the OAuth flow.</p>
+                </div>
+            `;
+
+            document.getElementById('victimSection').style.display = 'block';
+        }
+
+        function copyURL() {
+            navigator.clipboard.writeText(maliciousURL);
+            alert('✓ Malicious URL copied to clipboard');
+        }
+
+        function openAsVictim() {
+            if (!maliciousURL) {
+                alert('Generate the malicious URL first!');
+                return;
+            }
+
+            window.open(maliciousURL, '_blank');
+        }
+
+        function showURLAnalysis() {
+            const analysisDiv = document.getElementById('analysis');
+            analysisDiv.innerHTML = `
+                <div style="background: #1a1a1a; padding: 20px; border-radius: 5px; margin-top: 15px;">
+                    <h4 class="danger">CSRF Vulnerability Analysis:</h4>
+                    
+                    <p><strong>Vulnerable URL Structure:</strong></p>
+                    <pre style="background: #fee; color: #000; padding: 10px; border-radius: 3px;">
+http://localhost:4000/authorize?
+  response_type=code
+  &client_id=client-app-vulnerable
+  &redirect_uri=http://localhost:3000/callback-server
+  &scope=profile+email
+  [❌ MISSING: &state=random-value]
+                    </pre>
+                    
+                    <p><strong>What happens:</strong></p>
+                    <ol>
+                        <li>Attacker initiates OAuth flow (creates this URL)</li>
+                        <li>Victim clicks link (thinks it's legitimate)</li>
+                        <li>Victim logs in and authorizes</li>
+                        <li><span class="danger">Server can't tell victim didn't initiate this!</span></li>
+                        <li>Authorization completes for whoever initiated it (attacker)</li>
+                    </ol>
+                    
+                    <p><strong class="success">Secure URL would include:</strong></p>
+                    <pre style="background: #d5f4e6; color: #000; padding: 10px; border-radius: 3px;">
+http://localhost:4000/authorize?
+  response_type=code
+  &client_id=client-app-vulnerable
+  &redirect_uri=http://localhost:3000/callback-server
+  &scope=profile+email
+  &state=abc123-random-value  ✓
+  
+// Callback would verify:
+if (receivedState !== sessionState) {
+    throw Error('CSRF detected - states don\'t match!');
+}
+                    </pre>
+                    
+                    <p class="danger"><strong>Impact:</strong> Attacker can trick victim into linking victim's OAuth account to attacker's application session, giving attacker access to victim's data.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
