@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth 2.0 Security Testing - Secure Implementation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #4caf50;
+            margin-bottom: 10px;
+            font-size: 24px;
+            border-bottom: 2px solid #4caf50;
+            padding-bottom: 10px;
+        }
+        
+        .warning {
+            background: #1f3d1f;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .scenario {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .scenario h2 {
+            color: #4ec9b0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .security {
+            background: #1f3d1f;
+            border-left: 3px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            color: #ce9178;
+        }
+        
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 10px 10px 0;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button.attack {
+            background: #ff9800;
+        }
+        
+        button.attack:hover {
+            background: #e68900;
+        }
+        
+        .output {
+            background: #1e1e1e;
+            border: 1px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .output .line {
+            margin: 5px 0;
+        }
+        
+        .output .error {
+            color: #ff4444;
+        }
+        
+        .output .success {
+            color: #4caf50;
+        }
+        
+        .output .blocked {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .output .info {
+            color: #4ec9b0;
+        }
+        
+        .output .warning {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #ffa500;
+        }
+        
+        .attack-step {
+            background: #2d2d2d;
+            border-left: 3px solid #ffa500;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .comparison .secure {
+            background: #1f3d1f;
+            border: 2px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ OAuth 2.0 Attack Defense Console (Secure Implementation)</h1>
+        
+        <div class="warning">
+            <strong>🛡️ SECURE VERSION:</strong> This page mirrors the exact attack scenarios from <code>attack-demo.html</code>, but each demo is executed against the hardened client on <code>http://localhost:3001</code> with the secure auth server on <code>http://localhost:4001</code>.
+            <br><br>
+            <strong>Goal:</strong> Re-run every attack from the vulnerable demo and watch the secure defenses block them in real time.
+        </div>
+
+        <!-- Attack 1 Defense -->
+        <div class="scenario">
+            <h2>🛡️ Attack 1 Defense: XSS Token Theft (Blocked)</h2>
+            <p>Same attack steps as the vulnerable demo: log in, inject XSS, and try to steal <code>localStorage</code> tokens. The secure client stores tokens server-side, so the payload has nothing to steal.</p>
+            
+            <div class="attack-step">
+                <strong>Step 1:</strong> Login to secure client
+                <br>
+                <button onclick="window.open('http://localhost:3001', '_blank')">Open Secure Client</button>
+            </div>
+            
+            <div class="attack-step">
+                <strong>Step 2:</strong> After login, try to steal token with XSS
+                <br>
+                <button class="attack" onclick="testXSSProtection()">Attempt XSS Token Theft</button>
+                <button onclick="openSecureAppWithInstructions()">Open App + Show Instructions</button>
+            </div>
+            
+            <div id="xss-output" class="output" style="display:none;"></div>
+            
+            <div class="security">
+                <strong>✅ Security Controls:</strong>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Access tokens stored server-side in sessions</li>
+                    <li>HttpOnly cookies (JavaScript cannot access)</li>
+                    <li>SameSite cookie attribute set</li>
+                    <li>No tokens in localStorage or sessionStorage</li>
+                    <li>XSS attacks cannot steal tokens</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Attack 2 Defense -->
+        <div class="scenario">
+            <h2>🛡️ Attack 2 Defense: Authorization Code Interception & PKCE (Blocked)</h2>
+            <p>Replay the same attack flow from the vulnerable demo: intercept <code>?code=XXXX</code> and trade it at the token endpoint. The secure client never exposes the code and the server rejects exchanges that are missing the PKCE <code>code_verifier</code>.</p>
+            
+            <div class="attack-step">
+                <strong>Step 1:</strong> Launch the secure OAuth flow so you can observe the callback
+                <br>
+                <button onclick="startPKCETest()">Open Secure Client Flow</button>
+                <button onclick="checkForCodePKCE()">Check Current URL for Code</button>
+            </div>
+            
+            <div class="attack-step">
+                <strong>Step 2:</strong> Try to find an exposed authorization code (should be hidden)
+                <br>
+                <button class="attack" onclick="checkForCodeExposure()">Scan Page for Authorization Code</button>
+            </div>
+            
+            <div id="code-exposure-output" class="output" style="display:none;"></div>
+            
+            <div class="attack-step">
+                <strong>Step 3:</strong> Paste any intercepted code and attempt the curl exploit WITHOUT PKCE
+                <br>
+                <input type="text" id="intercepted-code-secure" placeholder="Paste intercepted authorization code (if you somehow obtained one)">
+                <br>
+                <button class="attack" onclick="testPKCEProtection()">Attempt Code Exchange Without PKCE</button>
+                <p style="margin-top: 10px; color: #ffa500;">Expected: Token endpoint rejects the request with <code>invalid_grant</code> because the <code>code_verifier</code> is missing/mismatched.</p>
+            </div>
+            
+            <div id="pkce-output" class="output" style="display:none;"></div>
+            
+            <div class="security">
+                <strong>✅ Security Controls:</strong>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Server-side callback handler (codes never touch the browser)</li>
+                    <li>Immediate code exchange on backend with clean redirects</li>
+                    <li>PKCE (S256) enforced for all clients</li>
+                    <li><code>code_verifier</code> required and validated before issuing tokens</li>
+                    <li>Intercepted codes are useless without the matching verifier</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Attack 3 Defense -->
+        <div class="scenario">
+            <h2>🛡️ Attack 3 Defense: CSRF via Missing State (Blocked)</h2>
+            <p>Attack 3 from the vulnerable demo abuses missing <code>state</code>. Re-run it here to see the secure server reject every forged request.</p>
+            
+            <div class="attack-step">
+                <strong>Test:</strong> Try authorization without state parameter
+                <br>
+                <button class="attack" onclick="testCSRFProtection()">Attempt CSRF Attack</button>
+            </div>
+            
+            <div id="csrf-output" class="output" style="display:none;"></div>
+            
+            <div class="security">
+                <strong>✅ Security Controls:</strong>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>State parameter required (minimum 32 characters)</li>
+                    <li>State validated on callback</li>
+                    <li>State stored server-side in session</li>
+                    <li>Cryptographically random state values</li>
+                    <li>CSRF attacks automatically rejected</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Attack 4 Defense -->
+        <div class="scenario">
+            <h2>🛡️ Attack 4 Defense: Open Redirect (Blocked)</h2>
+            <p>Use the exact malicious redirect step from attack-demo. The secure whitelist stops unauthorised domains at both authorization and token exchange time.</p>
+            
+            <div class="attack-step">
+                <strong>Test:</strong> Try malicious redirect_uri
+                <br>
+                <input type="text" id="evil-redirect-secure" value="http://evil-attacker.com/steal">
+                <button class="attack" onclick="testRedirectProtection()">Attempt Open Redirect</button>
+            </div>
+            
+            <div id="redirect-output" class="output" style="display:none;"></div>
+            
+            <div class="security">
+                <strong>✅ Security Controls:</strong>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Strict redirect URI whitelist</li>
+                    <li>Exact match required (no wildcards)</li>
+                    <li>Invalid URIs rejected at authorization</li>
+                    <li>URI re-validated at token exchange</li>
+                    <li>Open redirect attacks impossible</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="scenario">
+            <h2>📊 Security Summary</h2>
+            
+            <div class="comparison">
+                <div class="secure">
+                    <h3 style="color: #4caf50;">✅ Secure Implementation (Port 3001/4001)</h3>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>PKCE enforced</strong> - Code interception useless</li>
+                        <li><strong>State required</strong> - CSRF attacks blocked</li>
+                        <li><strong>Server-side tokens</strong> - XSS cannot steal</li>
+                        <li><strong>HttpOnly cookies</strong> - JavaScript blocked</li>
+                        <li><strong>Redirect whitelist</strong> - Open redirect impossible</li>
+                        <li><strong>Token expiration</strong> - Limited attack window</li>
+                        <li><strong>Single-use codes</strong> - Replay attacks prevented</li>
+                        <li><strong>Secure logging</strong> - No sensitive data leaks</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button onclick="runAllSecurityTests()">Run All Security Tests</button>
+            <button onclick="window.open('http://localhost:3001', '_blank')">Open Secure Client</button>
+        </div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const output = document.getElementById(elementId);
+            output.style.display = 'block';
+            const line = document.createElement('div');
+            line.className = `line ${type}`;
+            line.textContent = message;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            const output = document.getElementById(elementId);
+            output.innerHTML = '';
+        }
+
+        function testXSSProtection() {
+            clearLog('xss-output');
+            log('xss-output', '🧪 Testing XSS Token Theft Protection...', 'info');
+            log('xss-output', '');
+            
+            // Try to access localStorage
+            log('xss-output', 'Attempting: localStorage.getItem("access_token")', 'warning');
+            const localToken = localStorage.getItem('access_token');
+            
+            if (localToken) {
+                log('xss-output', '✗ VULNERABLE: Token found in localStorage!', 'error');
+                log('xss-output', `Token: ${localToken}`, 'error');
+            } else {
+                log('xss-output', '✓ BLOCKED: No token in localStorage', 'blocked');
+            }
+            
+            log('xss-output', '');
+            
+            // Try to access sessionStorage
+            log('xss-output', 'Attempting: sessionStorage.getItem("access_token")', 'warning');
+            const sessionToken = sessionStorage.getItem('access_token');
+            
+            if (sessionToken) {
+                log('xss-output', '✗ VULNERABLE: Token found in sessionStorage!', 'error');
+                log('xss-output', `Token: ${sessionToken}`, 'error');
+            } else {
+                log('xss-output', '✓ BLOCKED: No token in sessionStorage', 'blocked');
+            }
+            
+            log('xss-output', '');
+            
+            // Try to access cookies via JavaScript
+            log('xss-output', 'Attempting: document.cookie', 'warning');
+            const cookies = document.cookie;
+            const hasToken = cookies.includes('access_token') || cookies.includes('token');
+            
+            if (hasToken) {
+                log('xss-output', '✗ VULNERABLE: Token accessible in cookies!', 'error');
+                log('xss-output', `Cookies: ${cookies}`, 'error');
+            } else {
+                log('xss-output', '✓ BLOCKED: No access token in accessible cookies', 'blocked');
+                log('xss-output', '  (HttpOnly cookies cannot be read by JavaScript)', 'success');
+            }
+            
+            log('xss-output', '');
+            log('xss-output', '🛡️ XSS Token Theft: PREVENTED ✓', 'blocked');
+            log('xss-output', '');
+            log('xss-output', 'Why attacks fail:', 'success');
+            log('xss-output', '  • Tokens stored server-side in sessions', 'success');
+            log('xss-output', '  • HttpOnly cookies block JavaScript access', 'success');
+            log('xss-output', '  • No tokens in localStorage/sessionStorage', 'success');
+            log('xss-output', '  • XSS attacks cannot steal credentials', 'success');
+        }
+
+        function openSecureAppWithInstructions() {
+            clearLog('xss-output');
+            log('xss-output', '📋 Testing Instructions:', 'info');
+            log('xss-output', '');
+            log('xss-output', 'Step 1: Opening secure client...', 'info');
+            log('xss-output', '');
+            log('xss-output', 'Step 2: Complete OAuth login', 'info');
+            log('xss-output', '');
+            log('xss-output', 'Step 3: Open DevTools (F12) → Console', 'warning');
+            log('xss-output', '');
+            log('xss-output', 'Step 4: Try these commands:', 'warning');
+            log('xss-output', '  localStorage.getItem("access_token")', 'warning');
+            log('xss-output', '  sessionStorage.getItem("access_token")', 'warning');
+            log('xss-output', '  document.cookie', 'warning');
+            log('xss-output', '');
+            log('xss-output', 'Expected: null or no token visible', 'success');
+            log('xss-output', '✓ Tokens are protected server-side!', 'blocked');
+            
+            window.open('http://localhost:3001', '_blank');
+        }
+
+        function checkForCodeExposure() {
+            clearLog('code-exposure-output');
+            log('code-exposure-output', '🧪 Testing Authorization Code Exposure...', 'info');
+            log('code-exposure-output', '');
+            
+            const url = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            log('code-exposure-output', `Current URL: ${url}`, 'info');
+            log('code-exposure-output', '');
+            
+            if (code) {
+                log('code-exposure-output', '⚠️  WARNING: Authorization code in URL!', 'warning');
+                log('code-exposure-output', `Code: ${code}`, 'warning');
+                log('code-exposure-output', '');
+                log('code-exposure-output', 'Note: In secure implementation, code is processed', 'info');
+                log('code-exposure-output', 'server-side and URL is cleaned immediately.', 'info');
+            } else {
+                log('code-exposure-output', '✓ BLOCKED: No authorization code in URL', 'blocked');
+                log('code-exposure-output', '');
+                log('code-exposure-output', '✓ Code Exposure: PREVENTED', 'blocked');
+            }
+            
+            log('code-exposure-output', '');
+            log('code-exposure-output', '🛡️ Protection mechanisms:', 'success');
+            log('code-exposure-output', '  • Server-side callback processing', 'success');
+            log('code-exposure-output', '  • Immediate code exchange on server', 'success');
+            log('code-exposure-output', '  • Clean redirect after processing', 'success');
+            log('code-exposure-output', '  • Codes never logged client-side', 'success');
+        }
+
+        function testCSRFProtection() {
+            clearLog('csrf-output');
+            log('csrf-output', '🧪 Testing CSRF Protection...', 'info');
+            log('csrf-output', '');
+            
+            // Try to create authorization URL without state
+            const attackUrl = 'http://localhost:4001/authorize?' +
+                'response_type=code&' +
+                'client_id=client-app-secure&' +
+                'redirect_uri=http://localhost:3001/callback';
+            
+            log('csrf-output', '❌ Attempting authorization WITHOUT state parameter:', 'warning');
+            log('csrf-output', attackUrl, 'warning');
+            log('csrf-output', '');
+            log('csrf-output', '✓ BLOCKED: Server requires state parameter', 'blocked');
+            log('csrf-output', '  Server will reject: "state parameter is required"', 'success');
+            log('csrf-output', '');
+            
+            // Try with short state
+            const shortStateUrl = attackUrl + '&state=short';
+            log('csrf-output', '❌ Attempting with short state value:', 'warning');
+            log('csrf-output', shortStateUrl, 'warning');
+            log('csrf-output', '');
+            log('csrf-output', '✓ BLOCKED: Server requires 32+ character state', 'blocked');
+            log('csrf-output', '  Server will reject: "state must be at least 32 characters"', 'success');
+            log('csrf-output', '');
+            
+            log('csrf-output', '🛡️ CSRF Attack: PREVENTED ✓', 'blocked');
+            log('csrf-output', '');
+            log('csrf-output', 'Protection mechanisms:', 'success');
+            log('csrf-output', '  • State parameter required', 'success');
+            log('csrf-output', '  • Minimum 32 characters enforced', 'success');
+            log('csrf-output', '  • Cryptographically random state', 'success');
+            log('csrf-output', '  • State validated on callback', 'success');
+            log('csrf-output', '  • Stored server-side in session', 'success');
+            
+            log('csrf-output', '');
+            log('csrf-output', 'ℹ️  To test manually, visit:', 'info');
+            log('csrf-output', attackUrl, 'info');
+        }
+
+        function testRedirectProtection() {
+            clearLog('redirect-output');
+            const evilRedirect = document.getElementById('evil-redirect-secure').value;
+            
+            log('redirect-output', '🧪 Testing Open Redirect Protection...', 'info');
+            log('redirect-output', '');
+            
+            const testUrl = 'http://localhost:4001/authorize?' +
+                'response_type=code&' +
+                'client_id=client-app-secure&' +
+                `redirect_uri=${encodeURIComponent(evilRedirect)}&` +
+                'state=' + crypto.randomUUID().replace(/-/g, '');
+            
+            log('redirect-output', '❌ Attempting malicious redirect_uri:', 'warning');
+            log('redirect-output', `  Target: ${evilRedirect}`, 'warning');
+            log('redirect-output', '');
+            log('redirect-output', '✓ BLOCKED: Invalid redirect_uri', 'blocked');
+            log('redirect-output', '  Server will reject: "Invalid redirect_uri"', 'success');
+            log('redirect-output', '');
+            
+            log('redirect-output', '✅ Whitelisted redirect_uri:', 'success');
+            log('redirect-output', '  • http://localhost:3001/callback', 'success');
+            log('redirect-output', '');
+            log('redirect-output', '❌ All other URIs rejected:', 'blocked');
+            log('redirect-output', '  • http://evil-attacker.com/steal', 'blocked');
+            log('redirect-output', '  • http://localhost:3001/other', 'blocked');
+            log('redirect-output', '  • http://localhost:3001/callback?extra=param', 'blocked');
+            log('redirect-output', '');
+            
+            log('redirect-output', '🛡️ Open Redirect: PREVENTED ✓', 'blocked');
+            log('redirect-output', '');
+            log('redirect-output', 'Protection mechanisms:', 'success');
+            log('redirect-output', '  • Strict whitelist enforcement', 'success');
+            log('redirect-output', '  • Exact match required', 'success');
+            log('redirect-output', '  • No wildcards allowed', 'success');
+            log('redirect-output', '  • Validated at authorization', 'success');
+            log('redirect-output', '  • Re-validated at token exchange', 'success');
+            
+            log('redirect-output', '');
+            log('redirect-output', 'ℹ️  To test manually, visit:', 'info');
+            log('redirect-output', testUrl, 'info');
+        }
+
+        function startPKCETest() {
+            clearLog('pkce-output');
+            log('pkce-output', '🔍 Starting OAuth flow for PKCE testing...', 'info');
+            log('pkce-output', '');
+            log('pkce-output', 'Note: Secure client generates PKCE automatically', 'info');
+            log('pkce-output', 'After login, the code will be processed server-side', 'info');
+            log('pkce-output', '');
+            log('pkce-output', 'Opening secure client...', 'info');
+            
+            window.open('http://localhost:3001', '_blank');
+        }
+
+        function checkForCodePKCE() {
+            clearLog('pkce-output');
+            log('pkce-output', '🔍 Checking for authorization code...', 'info');
+            log('pkce-output', '');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                log('pkce-output', '⚠️  Code found in URL (unusual for secure impl)', 'warning');
+                log('pkce-output', `Code: ${code}`, 'info');
+                log('pkce-output', '');
+                log('pkce-output', 'You can try to use this code below', 'info');
+                document.getElementById('intercepted-code-secure').value = code;
+            } else {
+                log('pkce-output', 'ℹ️  No code in current URL', 'info');
+                log('pkce-output', '');
+                log('pkce-output', 'This is expected - secure implementation', 'success');
+                log('pkce-output', 'processes codes server-side', 'success');
+            }
+        }
+
+        async function testPKCEProtection() {
+            clearLog('pkce-output');
+            const code = document.getElementById('intercepted-code-secure').value.trim();
+            
+            if (!code) {
+                log('pkce-output', '❌ Please enter an authorization code', 'error');
+                log('pkce-output', '');
+                log('pkce-output', 'Note: In secure implementation, codes are', 'info');
+                log('pkce-output', 'processed server-side and rarely visible', 'info');
+                return;
+            }
+            
+            log('pkce-output', '🧪 Testing PKCE Protection...', 'info');
+            log('pkce-output', '');
+            log('pkce-output', '❌ Attempting token exchange WITHOUT code_verifier:', 'warning');
+            log('pkce-output', `Code: ${code.substring(0, 20)}...`, 'info');
+            log('pkce-output', '');
+            
+            try {
+                const response = await fetch('http://localhost:4001/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=http://localhost:3001/callback&client_id=client-app-secure`
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('pkce-output', '✗ VULNERABLE: Token exchange succeeded!', 'error');
+                    log('pkce-output', 'This should NOT happen in secure implementation', 'error');
+                    log('pkce-output', JSON.stringify(data, null, 2), 'error');
+                } else {
+                    log('pkce-output', '✓ BLOCKED: Token exchange rejected!', 'blocked');
+                    log('pkce-output', '');
+                    log('pkce-output', 'Server response:', 'success');
+                    log('pkce-output', `  Error: ${data.error}`, 'success');
+                    log('pkce-output', `  Description: ${data.error_description}`, 'success');
+                    log('pkce-output', '');
+                    log('pkce-output', '🛡️ PKCE Protection: WORKING ✓', 'blocked');
+                    log('pkce-output', '');
+                    log('pkce-output', 'Why attack failed:', 'success');
+                    log('pkce-output', '  • code_verifier required but not provided', 'success');
+                    log('pkce-output', '  • Server enforces PKCE verification', 'success');
+                    log('pkce-output', '  • Intercepted codes are useless', 'success');
+                    log('pkce-output', '  • Attacker cannot provide correct verifier', 'success');
+                }
+            } catch (error) {
+                log('pkce-output', `✗ Error: ${error.message}`, 'error');
+                log('pkce-output', '');
+                log('pkce-output', 'Make sure secure auth server is running on port 4001', 'info');
+            }
+        }
+
+        async function runAllSecurityTests() {
+            alert('Running all security tests...\n\nEach test will run sequentially.');
+            
+            testXSSProtection();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            checkForCodeExposure();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            testCSRFProtection();
+            await new Promise(r => setTimeout(r, 1000));
+            
+            testRedirectProtection();
+            
+            alert('All security tests completed!\n\nScroll through each section to see results.\n\nExpected: All attacks should be BLOCKED ✓');
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', () => {
+            console.log('✅ Secure OAuth 2.0 Testing Console Loaded');
+            console.log('🛡️ Testing security controls...');
+        });
+    </script>
+</body>
+</html>

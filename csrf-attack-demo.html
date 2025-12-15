@@ -86,17 +86,28 @@
             <p>The victim receives this link (via email/chat) and clicks it:</p>
             <div id="victimSection" style="display:none;">
                 <button class="victim-btn" onclick="openAsVictim()">Click Here as Victim</button>
-                <p>Login with: <code>victim / victim123</code> and click "Allow"</p>
+                <p>Login with: <code>demo / password123</code> and click "Allow"</p>
+                <p class="warning">⚠️ After clicking "Allow", the new tab will show the authorization code. Copy that URL and come back here!</p>
             </div>
         </div>
 
+        <div class="step attacker">
+            <h3 class="danger">Step 3: Attacker Sees the Result</h3>
+            <p>After victim authorizes, paste the callback URL here to see what attacker gets:</p>
+            <input type="text" id="callbackURL" placeholder="Paste callback URL here (http://localhost:3000/callback?code=...)" 
+                   style="width: 100%; padding: 10px; background: #1a1a1a; color: #fff; border: 1px solid #555; border-radius: 5px; margin: 10px 0;">
+            <button onclick="analyzeCallback()">Analyze Callback (As Attacker)</button>
+            <div id="attackerView"></div>
+        </div>
+
         <div class="step">
-            <h3 class="success">Step 3: See the Vulnerability</h3>
+            <h3 class="success">Step 4: See the Vulnerability</h3>
             <p>After authorization, notice:</p>
             <ul>
                 <li>The callback URL has NO state parameter to verify</li>
                 <li>The server accepts ANY authorization code</li>
                 <li>No way to detect if user initiated this OAuth flow</li>
+                <li>Attacker can use this code to complete their OAuth flow</li>
                 <li>In real attack: victim's account links to attacker's session</li>
             </ul>
             <button onclick="showURLAnalysis()">Analyze Callback URL</button>
@@ -141,7 +152,7 @@ if (receivedState !== sessionState) {
             const params = new URLSearchParams({
                 response_type: 'code',
                 client_id: 'client-app-vulnerable',
-                redirect_uri: 'http://localhost:3000/callback-server',
+                redirect_uri: 'http://localhost:3000/callback',  // Use client-side callback
                 scope: 'profile email'
                 // VULNERABILITY: NO STATE PARAMETER!
             });
@@ -155,6 +166,7 @@ if (receivedState !== sessionState) {
                     <button onclick="copyURL()">Copy URL</button>
                     <p class="danger">Notice: No <code>&state=...</code> in the URL!</p>
                     <p>This makes it impossible to verify who initiated the OAuth flow.</p>
+                    <p class="warning">After clicking "Allow", check the URL bar - you'll see the authorization code without state validation!</p>
                 </div>
             `;
 
@@ -163,7 +175,7 @@ if (receivedState !== sessionState) {
 
         function copyURL() {
             navigator.clipboard.writeText(maliciousURL);
-            alert('✓ Malicious URL copied to clipboard');
+            alert('Malicious URL copied to clipboard');
         }
 
         function openAsVictim() {
@@ -172,7 +184,111 @@ if (receivedState !== sessionState) {
                 return;
             }
 
+            alert('Opening victim window...\n\n1. Login as victim (demo/password123)\n2. Click "Allow"\n3. Copy the ENTIRE callback URL from address bar\n4. Come back and paste it in Step 3');
             window.open(maliciousURL, '_blank');
+        }
+
+        function analyzeCallback() {
+            const callbackURL = document.getElementById('callbackURL').value.trim();
+            
+            if (!callbackURL) {
+                alert('Please paste the callback URL first!');
+                return;
+            }
+
+            const url = new URL(callbackURL);
+            const code = url.searchParams.get('code');
+            const state = url.searchParams.get('state');
+
+            const attackerViewDiv = document.getElementById('attackerView');
+            
+            if (!code) {
+                attackerViewDiv.innerHTML = `
+                    <div style="background: #1a1a1a; padding: 20px; border-radius: 5px; margin-top: 15px;">
+                        <p class="danger">No authorization code found in URL!</p>
+                        <p>Make sure you paste the full callback URL.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            attackerViewDiv.innerHTML = `
+                <div style="background: #1a1a1a; padding: 20px; border-radius: 5px; margin-top: 15px;">
+                    <h4 class="danger">🚨 ATTACKER'S VIEW - CSRF Attack Success!</h4>
+                    
+                    <p class="success"><strong>Extracted from victim's callback:</strong></p>
+                    <div class="url-box">
+                        <strong>Authorization Code:</strong> ${code}<br>
+                        <strong>State Parameter:</strong> ${state || '❌ MISSING (Vulnerable!)'}<br>
+                        <strong>Full URL:</strong> ${callbackURL}
+                    </div>
+                    
+                    <h4 class="danger">What the attacker can do now:</h4>
+                    <ol>
+                        <li><strong>Exchange code for access token</strong> (Attack 2+5 in attack-demo.html)</li>
+                        <li><strong>Link victim's account to attacker's session</strong></li>
+                        <li><strong>Access victim's data through attacker's application</strong></li>
+                    </ol>
+                    
+                    <p class="danger"><strong>Why this worked:</strong></p>
+                    <ul>
+                        <li>❌ No state parameter to verify who initiated OAuth</li>
+                        <li>❌ Server accepted authorization without validation</li>
+                        <li>❌ Victim thought they were authorizing for themselves</li>
+                        <li>❌ Actually authorized attacker's OAuth flow</li>
+                    </ul>
+                    
+                    <button onclick="exchangeCode('${code}')">Exchange This Code for Token (As Attacker)</button>
+                    
+                    <div id="tokenResult" style="margin-top: 20px;"></div>
+                </div>
+            `;
+        }
+
+        async function exchangeCode(code) {
+            const resultDiv = document.getElementById('tokenResult');
+            resultDiv.innerHTML = '<p class="warning">Exchanging code for access token...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:4000/token', {
+                    method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `grant_type=authorization_code&code=${code}&redirect_uri=http://localhost:3000/callback&client_id=client-app-vulnerable`
+            });                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div style="background: #2a1a1a; padding: 15px; border: 2px solid #e74c3c; border-radius: 5px;">
+                            <h4 class="danger">✓ ATTACK SUCCESSFUL - Token Obtained!</h4>
+                            <pre style="background: #1a1a1a; padding: 10px; border-radius: 3px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                            <p class="danger"><strong>Attacker now has:</strong></p>
+                            <ul>
+                                <li>✓ Valid access token for victim's account</li>
+                                <li>✓ Can access victim's profile, email, data</li>
+                                <li>✓ Can perform actions as the victim</li>
+                            </ul>
+                            <p class="success"><strong>Impact:</strong> Complete account compromise via CSRF!</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: #1a1a1a; padding: 15px; border: 1px solid #f39c12; border-radius: 5px;">
+                            <p class="warning">Token exchange failed: ${data.error}</p>
+                            <p>${data.error_description || ''}</p>
+                            <p><small>Note: Code may have expired or been used. Try generating a fresh one.</small></p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background: #1a1a1a; padding: 15px; border: 1px solid #e74c3c; border-radius: 5px;">
+                        <p class="danger">Error: ${error.message}</p>
+                        <p>Make sure the vulnerable auth server is running on port 4000</p>
+                    </div>
+                `;
+            }
         }
 
         function showURLAnalysis() {
@@ -186,7 +302,7 @@ if (receivedState !== sessionState) {
 http://localhost:4000/authorize?
   response_type=code
   &client_id=client-app-vulnerable
-  &redirect_uri=http://localhost:3000/callback-server
+  &redirect_uri=http://localhost:3000/callback
   &scope=profile+email
   [❌ MISSING: &state=random-value]
                     </pre>
@@ -197,21 +313,21 @@ http://localhost:4000/authorize?
                         <li>Victim clicks link (thinks it's legitimate)</li>
                         <li>Victim logs in and authorizes</li>
                         <li><span class="danger">Server can't tell victim didn't initiate this!</span></li>
-                        <li>Authorization completes for whoever initiated it (attacker)</li>
+                        <li>Authorization code returned WITHOUT state parameter to verify origin</li>
+                        <li>Attacker can use this code to link victim's account to their session</li>
                     </ol>
-                    
                     <p><strong class="success">Secure URL would include:</strong></p>
                     <pre style="background: #d5f4e6; color: #000; padding: 10px; border-radius: 3px;">
 http://localhost:4000/authorize?
   response_type=code
-  &client_id=client-app-vulnerable
-  &redirect_uri=http://localhost:3000/callback-server
+  &client_id=client-app-secure
+  &redirect_uri=http://localhost:3001/callback
   &scope=profile+email
   &state=abc123-random-value  ✓
   
 // Callback would verify:
 if (receivedState !== sessionState) {
-    throw Error('CSRF detected - states don\'t match!');
+    throw Error('CSRF detected - states do not match!');
 }
                     </pre>
                     
